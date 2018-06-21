@@ -120,7 +120,8 @@ void editorDrawRows(struct abuf *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
         abAppend(ab, "~", 1);
-
+        
+        abAppend(ab, "\x1b[K", 3); // Clear remaining characters on the line
         if (y < E.screenrows -1) {
             abAppend(ab, "\r\n", 2);
         }
@@ -131,7 +132,6 @@ void editorRefreshScreen() {
     struct abuf ab = ABUF_INIT; // Create new buffer
     
     abAppend(&ab, "\x1b[?25l", 6); //Hide cursor
-    abAppend(&ab, "\x1b[2J", 4); // Clear screen
     abAppend(&ab, "\x1b[H", 3); // Zero cursor
 
     editorDrawRows(&ab); // Draw tildes
