@@ -154,6 +154,8 @@ void editorRefreshScreen() {
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    abAppend(&ab, buf, strlen(buf)); //Set cursor position
+    
     abAppend(&ab, "\x1b[?25h", 6); //Show cursor
 
     write(STDOUT_FILENO, ab.b, ab.len); // Write out buffer
