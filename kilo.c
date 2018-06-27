@@ -40,6 +40,7 @@ typedef struct row {
 
 struct editorState{
     int cursorX, cursorY;
+    int rowOffset;
     int screenRows;
     int screenColumns;
     int totalRows;
@@ -215,13 +216,24 @@ void freeBuffer(struct buffer *buf) {
 #define BUFFER_INIT {NULL, 0}
 
 /*** Output ***/
+
+void editorScroll() {
+    if (E.cursorY < E.rowOffset){ // Cursor above visible window
+        E.rowOffset = E.cursorY;
+    }
+    if (E.cursorY >= E.rowOffset + E.screenRows) { // Cursor below visible window
+        E.rowOffset = E.cursorY - E.screenRows + 1;
+    }
+}
+
 void editorDrawRows(struct buffer *buf) {
     int y;
     for (y = 0; y < E.screenRows; y++) {
-        if (y >= E.totalRows) {
+        int fileRow = y + E.rowOffset;
+        if (fileRow >= E.totalRows) {
             if (E.totalRows == 0 && y == E.screenRows / 3) { // Show only if is new file
                 char welcome[80];
-                int welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
+                int welcomelen = snprintf(welcome, sizeof(welcome), "kilo editor -- version %s", KILO_VERSION);
                 if (welcomelen > E.screenColumns) welcomelen = E.screenColumns;
                 int padding = (E.screenColumns - welcomelen) / 2;
                 if (padding) {
@@ -234,9 +246,9 @@ void editorDrawRows(struct buffer *buf) {
                 appendToBuffer(buf, "~", 1);
             }
         } else {
-            int len = E.rows[y].size;
+            int len = E.rows[fileRow].size;
             if (len > E.screenColumns) len = E.screenColumns;
-            appendToBuffer(buf, E.rows[y].chars, len);
+            appendToBuffer(buf, E.rows[fileRow].chars, len);
         }
 
         appendToBuffer(buf, "\x1b[K", 3); // Clear remaining characters on the line
@@ -247,6 +259,8 @@ void editorDrawRows(struct buffer *buf) {
 }
 
 void editorRefreshScreen() {
+    editorScroll();
+
     struct buffer buf = BUFFER_INIT; // Create new buffer
 
     appendToBuffer(&buf, "\x1b[?25l", 6); //Hide cursor
@@ -255,7 +269,7 @@ void editorRefreshScreen() {
     editorDrawRows(&buf); // Draw tildes
 
     char cursorPosition[32];
-    snprintf(cursorPosition, sizeof(cursorPosition), "\x1b[%d;%dH", E.cursorY + 1, E.cursorX + 1);
+    snprintf(cursorPosition, sizeof(cursorPosition), "\x1b[%d;%dH", (E.cursorY - E.rowOffset) + 1, E.cursorX + 1);
     appendToBuffer(&buf, cursorPosition, strlen(cursorPosition)); //Set cursor position
 
     appendToBuffer(&buf, "\x1b[?25h", 6); //Show cursor
@@ -283,7 +297,7 @@ void editorMoveCursor(int key) {
             }
             break;
         case ARROW_DOWN:
-            if (E.cursorY != E.screenRows - 1) {
+            if (E.cursorY != E.totalRows) {
                 E.cursorY++;
             }
             break;
@@ -330,6 +344,7 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cursorX = 0;
     E.cursorY = 0;
+    E.rowOffset = 0;
     E.totalRows = 0;
     E.rows = NULL;
 
